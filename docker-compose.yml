@@ -1,0 +1,23 @@
+name: final-project
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    # Windows 下有時需要強制輪詢才能偵測檔案變更
+    environment:
+      - WATCHFILES_FORCE_POLLING=true
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    # 讓 Vite 在 Docker 中也能熱更新 (Hot Reload)
+    environment:
+      - CHOKIDAR_USEPOLLING=true

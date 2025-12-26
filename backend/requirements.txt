@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+httpx
+openai
+google-genai
+python-multipart
+
