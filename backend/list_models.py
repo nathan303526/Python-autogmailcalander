@@ -1,6 +1,8 @@
 """
 測試腳本：列出所有可用的 Gemini 模型
 使用方式：python list_models.py YOUR_API_KEY
+因為我沒買openai，所以我也不知道會不會出包  QQ 
+(誰叫他們沒給學生免費額度:(
 """
 import sys
 from google import genai
