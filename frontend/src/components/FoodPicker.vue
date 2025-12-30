@@ -12,7 +12,7 @@ const getMealTitle = () => {
   if (hour >= 5 && hour < 11) return '早餐吃什麼？'
   if (hour >= 11 && hour < 17) return '午餐吃什麼？'
   if (hour >= 17 && hour < 22) return '晚餐吃什麼？'
-  return '宵夜吃什麼？'
+  return '還沒睡嗎?宵夜吃來吃...'
 }
 const mealTitle = ref(getMealTitle())
 

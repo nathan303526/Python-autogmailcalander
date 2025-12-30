@@ -439,10 +439,6 @@ watch(modelType, (newType) => {
   }
 })
 
-const applyPreset = (preset) => {
-  addKeywords.value = preset.add
-  removeKeywords.value = preset.remove
-}
 
 // 分析狀態
 const analysisStarted = ref(false)
@@ -628,7 +624,6 @@ const confirmAddToCalendar = async () => {
       }
     })
 
-    console.log('準備發送的事件數據:', events)
 
     // 批量加入
     await axios.post('http://localhost:8000/api/calendar/batch-add-events', {
@@ -1474,11 +1469,5 @@ const formatDateTime = (dateTimeStr) => {
   box-shadow: none;
 }
 
-.pair-item {
-  transition: all 0.2s;
-}
 
-.pair-item:hover {
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
 </style>

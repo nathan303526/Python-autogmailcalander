@@ -11,7 +11,7 @@ import re
 from google import genai
 from google.genai import types
 from google_auth_oauthlib.flow import InstalledAppFlow
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 
@@ -94,15 +94,32 @@ async def get_weather(lat: float = 24.95, lon: float = 121.22):
 from data import restaurants_db
 
 def is_open(restaurant):
-    now = datetime.now()
+    tz = timezone(timedelta(hours=8))
+    now = datetime.now(tz)
     current_day = (now.weekday() + 1) % 7 
+    prev_day = (current_day - 1 + 7) % 7
     current_time = now.strftime("%H:%M")
 
     for schedule in restaurant.get("openingHours", []):
+        # 檢查今天的營業時間
         if current_day in schedule["days"]:
             for slot in schedule["slots"]:
-                if slot["start"] <= current_time <= slot["end"]:
-                    return True
+                start, end = slot["start"], slot["end"]
+                if start <= end:
+                    if start <= current_time <= end:
+                        return True
+                else:
+                    if current_time >= start:
+                        return True
+        
+        # (是否跨日到今天凌晨)
+        if prev_day in schedule["days"]:
+            for slot in schedule["slots"]:
+                start, end = slot["start"], slot["end"]
+                if start > end:
+                    if current_time <= end:
+                        return True
+                        
     return False
 
 # API 2: /api/food

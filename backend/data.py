@@ -1,5 +1,4 @@
 restaurants_db = [
-    {"id": 3, "name": "24H桌遊店", "location": "宵夜街", "address": "桃園市中壢區五興路345號", "businesshours": "整天", "openingHours": [{"days": [0, 1, 2, 3, 4, 5, 6], "slots": [{"start": "00:00", "end": "23:59"}]}]},
     {"id": 4, "name": "一億園", "location": "宵夜街", "address": "桃園市中壢區五興路345號", "businesshours": "11:00-19:30 (週六日一休息)", "openingHours": [{"days": [2, 3, 4, 5], "slots": [{"start": "11:00", "end": "19:30"}]}]},
     {"id": 5, "name": "麥味登", "location": "宵夜街", "address": "桃園市中壢區五興路343號", "businesshours": "8:00-14:00", "openingHours": [{"days": [0, 1, 2, 3, 4, 5, 6], "slots": [{"start": "08:00", "end": "14:00"}]}]},
     {"id": 6, "name": "翔食堂", "location": "宵夜街", "address": "桃園市中壢區五興路339號", "businesshours": "10:00-13:30, 16:00-19:30 (週日公休)", "openingHours": [{"days": [1, 2, 3, 4, 5, 6], "slots": [{"start": "10:00", "end": "13:30"}, {"start": "16:00", "end": "19:30"}]}]},
