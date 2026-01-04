@@ -1,6 +1,7 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import axios from 'axios'
+import { API_URL } from '../config'
 
 const props = defineProps({
   show: Boolean
@@ -22,7 +23,7 @@ const form = reactive({
 const tempToken = ref('')
 
 const api = axios.create({
-  baseURL: 'http://localhost:8000'
+  baseURL: API_URL
 })
 
 const handleLogin = async () => {

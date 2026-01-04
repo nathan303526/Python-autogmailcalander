@@ -1,9 +1,9 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
+import { API_BASE } from '../config'
 
 const weather = ref(null)
-const API_BASE = 'http://localhost:8000/api'
 
 const fetchWeather = async () => {
   const callWeatherApi = async (lat = null, lon = null) => {

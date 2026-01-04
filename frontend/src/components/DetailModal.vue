@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import axios from 'axios'
+import { API_BASE } from '../config'
 
 const props = defineProps({
   item: {
@@ -16,7 +17,6 @@ const props = defineProps({
 const emit = defineEmits(['close', 'deleted'])
 
 const isDeleting = ref(false)
-const API_BASE = 'http://localhost:8000/api'
 
 const deleteEvent = async () => {
   console.log('Event item:', props.item)

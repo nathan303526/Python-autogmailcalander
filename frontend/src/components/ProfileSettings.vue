@@ -1,6 +1,7 @@
 <script setup>
 import { ref, reactive, watch } from 'vue'
 import axios from 'axios'
+import { API_BASE } from '../config'
 
 const props = defineProps({
   show: Boolean,
@@ -64,7 +65,7 @@ const updateProfile = async () => {
     if (profileForm.openai_api_key) payload.openai_api_key = profileForm.openai_api_key
     if (profileForm.gemini_api_key) payload.gemini_api_key = profileForm.gemini_api_key
     
-    await axios.put('http://localhost:8000/api/users/me', payload, {
+    await axios.put(`${API_BASE}/users/me`, payload, {
       headers: { Authorization: `Bearer ${props.token}` }
     })
     
@@ -91,7 +92,7 @@ const updatePassword = async () => {
   error.value = ''
   
   try {
-    await axios.put('http://localhost:8000/api/users/me/password', {
+    await axios.put(`${API_BASE}/users/me/password`, {
       old_password: passwordForm.old_password,
       new_password: passwordForm.new_password
     }, {

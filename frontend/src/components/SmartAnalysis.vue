@@ -394,6 +394,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import axios from 'axios'
+import { API_BASE } from '../config'
 
 const emit = defineEmits(['close', 'refreshCalendar'])
 
@@ -545,7 +546,7 @@ const startAnalysis = async () => {
   analyzing.value = true
   
   try {
-    const response = await axios.post('http://localhost:8000/api/smart-analysis', {
+    const response = await axios.post(`${API_BASE}/smart-analysis`, {
       intent: intent.value,
       email_count: intent.value === 'recent' ? emailCount.value : null,
       add_keywords: [],  // 不使用關鍵字匹配，全部交給 AI
@@ -626,7 +627,7 @@ const confirmAddToCalendar = async () => {
 
 
     // 批量加入
-    await axios.post('http://localhost:8000/api/calendar/batch-add-events', {
+    await axios.post(`${API_BASE}/calendar/batch-add-events`, {
       events: events
     })
 

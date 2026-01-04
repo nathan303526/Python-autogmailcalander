@@ -2,9 +2,9 @@
 import { ref } from 'vue'
 import axios from 'axios'
 import dayjs from 'dayjs'
+import { API_BASE } from '../config'
 
 const food = ref(null)
-const API_BASE = 'http://localhost:8000/api'
 
 // 自動判斷時段標題
 const getMealTitle = () => {

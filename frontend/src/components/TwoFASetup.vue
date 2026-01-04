@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from 'vue'
 import axios from 'axios'
+import { API_URL } from '../config'
 
 const props = defineProps({
   show: Boolean,
@@ -16,7 +17,7 @@ const loading = ref(false)
 const error = ref('')
 
 const api = axios.create({
-  baseURL: 'http://localhost:8000'
+  baseURL: API_URL
 })
 
 const startSetup = async () => {

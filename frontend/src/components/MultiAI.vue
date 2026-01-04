@@ -1,8 +1,7 @@
 <script setup>
 import { ref, onMounted, watch, nextTick } from 'vue'
 import axios from 'axios'
-
-const API_BASE = 'http://localhost:8000/api'
+import { API_BASE } from '../config'
 
 const openaiKey = ref('')
 const geminiKey = ref('')

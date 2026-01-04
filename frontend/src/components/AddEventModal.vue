@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
+import { API_BASE } from '../config'
 
 const props = defineProps({
   email: {
@@ -15,7 +16,6 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'added'])
 
-const API_BASE = 'http://localhost:8000/api'
 const isSubmitting = ref(false)
 
 // 表單資料

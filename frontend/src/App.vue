@@ -10,6 +10,7 @@ import LoginModal from './components/LoginModal.vue'
 import TwoFASetup from './components/TwoFASetup.vue'
 import ProfileSettings from './components/ProfileSettings.vue'
 import axios from 'axios'
+import { API_BASE } from './config'
 
 const currentPage = ref('assistant') // 預設顯示智慧助理頁面
 const isSidebarOpen = ref(true) // 側邊欄開關狀態
@@ -31,7 +32,7 @@ const checkLogin = async () => {
   }
 
   try {
-    const res = await axios.get('http://localhost:8000/api/users/me', {
+    const res = await axios.get(`${API_BASE}/users/me`, {
       headers: { Authorization: `Bearer ${currentToken}` }
     })
     user.value = res.data
@@ -133,7 +134,7 @@ onMounted(() => {
           </div>
             設定
           </button>
-          
+
           <button 
             v-if="!user?.['2fa_enabled']"
             @click="show2FAModal = true"

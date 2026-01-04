@@ -4,12 +4,12 @@ import axios from 'axios'
 import DetailModal from './DetailModal.vue'
 import AddEventModal from './AddEventModal.vue'
 import SmartAnalysis from './SmartAnalysis.vue'
+import { API_BASE } from '../config'
 
 const tasks = ref({ gmail: [], calendar: [] })
 const calendarNextPageToken = ref('')
 const isLoading = ref(false)
 const isLoadingMore = ref(false)
-const API_BASE = 'http://localhost:8000/api'
 
 // Modal State
 const selectedItem = ref(null)
