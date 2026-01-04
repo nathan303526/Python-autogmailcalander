@@ -1,5 +1,5 @@
-name: final-project
-
+# name: final-project
+version: '3.8'
 services:
   backend:
     build: ./backend
