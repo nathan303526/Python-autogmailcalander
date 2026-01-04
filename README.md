@@ -1,12 +1,11 @@
-# 📧 智慧郵件管理系統 (Smart Email & Calendar Manager)
+# 智慧郵件管理系統 (Smart Email & Calendar Manager)
 
 一個結合 AI 智慧分析的郵件與行事曆管理系統，使用 Google Gmail API、Google Calendar API 以及 Gemini/OpenAI AI 模型，自動分析郵件內容並智慧地加入到 Google Calendar 中。
 
 本系統具備完整的會員登入機制、雙重驗證 (2FA) 安全保護，以及個人化的 API Key 管理功能。
 
-## 🎯 專案特色
 
-### 核心功能
+## 核心功能
 - **🔐 安全認證系統**：
   - 完整的註冊與登入機制 (JWT Token)
   - **雙重驗證 (2FA)**：支援 Google Authenticator (TOTP)
@@ -19,15 +18,15 @@
 - **📅 自動日曆管理**：智慧提取郵件中的日期、時間資訊並加入 Calendar
 - **🔄 Google 整合**：OAuth 2.0 授權連結 Gmail 與 Google Calendar
 
-### 輔助功能
+## 輔助功能
 - **🗄️ 資料庫管理**：內建 Adminer 資料庫管理介面，方便檢視後端資料
 - **🌤️ 天氣查詢**：顯示當前位置天氣資訊
 - **🍽️ 餐廳推薦**：隨機推薦附近餐廳
 - **💬 多模組 AI 對話**：支援 Gemini 和 OpenAI 多模型對話
 
-## 🛠️ 技術架構
+# 🛠️ 技術架構
 
-### 後端 (Backend)
+## 後端 (Backend)
 - **框架**: FastAPI (Python 3.11)
 - **資料庫**: MariaDB (Docker Container)
 - **ORM**: SQLAlchemy
@@ -35,17 +34,17 @@
 - **AI 模型**: Google Gemini API, OpenAI GPT API
 - **Google API**: Gmail API (v1), Google Calendar API (v3)
 
-### 前端 (Frontend)
+## 前端 (Frontend)
 - **框架**: Vue 3 (Composition API)
 - **UI**: Tailwind CSS
 - **HTTP 客戶端**: Axios
 - **建置工具**: Vite
 
-### DevOps
+## DevOps
 - **容器化**: Docker Compose (Backend, Frontend, Database, Adminer)
 - **資料庫管理**: Adminer (Web GUI)
 
-## 📦 專案結構
+# 📦 專案結構
 
 ```
 期末專題/
@@ -75,9 +74,9 @@
 └── README.md               # 專案說明文件
 ```
 
-## 🚀 快速開始
+# 🚀 快速開始
 
-### 前置需求
+## 前置需求
 
 1. **Docker & Docker Compose** (推薦)
    - Docker Desktop 4.0+
@@ -85,7 +84,7 @@
    - 下載 `credentials.json` 並放入 `backend/` 資料夾
 3. **AI API Keys** (Gemini / OpenAI)
 
-### Docker 部署 (推薦)
+## Docker 部署 (推薦)
 
 ```bash
 # 1. 克隆專案
@@ -135,50 +134,13 @@ docker-compose logs -f backend
 2. 授權應用程式存取您的 Google 帳號。
 
 ### 4. 智慧郵件分析
-1. 點擊 **「🧠 智慧分析」**。
+1. 點擊 **「智慧分析」**。
 2. 選擇 AI 模型與分析範圍。
 3. 若已在個人設定中儲存 API Key，此處可留空；否則需手動輸入。
 4. 點擊 **「開始智慧分析」**，系統將自動篩選郵件並建議行事曆行程。
 
 ### 5. 資料庫管理 (Adminer)
-1. 前往 http://localhost:8080
-2. 系統選擇: `MySQL`
-3. 伺服器: `db`
-4. 使用者: `root`
-5. 密碼: `secret`
-6. 資料庫: `final_project`
 
-## 🔧 API 端點說明
-
-### 認證 API
-```http
-POST /api/auth/register      # 註冊
-POST /api/auth/login         # 登入 (回傳 JWT)
-GET  /api/auth/2fa/setup     # 取得 2FA QR Code
-POST /api/auth/2fa/verify    # 驗證 2FA
-```
-
-### 使用者 API
-```http
-GET /api/users/me            # 取得個人資料
-PUT /api/users/me            # 更新個人資料 (含 API Key)
-PUT /api/users/me/password   # 修改密碼
-```
-
-### 智慧分析 API
-```http
-POST /api/smart-analysis
-Content-Type: application/json
-
-{
-  "intent": "recent",
-  "email_count": 20,
-  "remove_keywords": ["廣告"],
-  "custom_prompt": "...",
-  "api_key": "...",  # 若未提供，則使用使用者資料庫中的 Key
-  "model_type": "gemini"
-}
-```
 
 ## ⚙️ 環境變數配置
 
