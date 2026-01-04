@@ -95,11 +95,12 @@ try:
     admin_user = db.query(User).filter(User.username == "admin").first()
     if not admin_user:
         print("Creating default admin user...")
-        hashed_password = pwd_context.hash("secret")
+        default_password = os.getenv("ADMIN_PASSWORD", "secret")
+        hashed_password = pwd_context.hash(default_password)
         new_user = User(username="admin", hashed_password=hashed_password)
         db.add(new_user)
         db.commit()
-        print("Default admin user created: admin / secret")
+        print(f"Default admin user created: admin / {default_password}")
     db.close()
 except Exception as e:
     print(f"Error creating default admin: {e}")
@@ -165,8 +166,13 @@ TOKEN_PATH = "token.json"
 origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-    "*" 
+    # "*", # 生產環境建議移除此行，只允許特定網域
 ]
+
+# 如果有設定 FRONTEND_URL 環境變數，則加入該網域
+frontend_url = os.getenv("FRONTEND_URL")
+if frontend_url:
+    origins.append(frontend_url)
 
 app.add_middleware(
     CORSMiddleware,

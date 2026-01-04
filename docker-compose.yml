@@ -12,6 +12,8 @@ services:
       - WATCHFILES_FORCE_POLLING=true
       - DATABASE_URL=${DATABASE_URL:-mysql+pymysql://root:secret@db:3306/final_project}
       - SECRET_KEY=${SECRET_KEY:-YOUR_SUPER_SECRET_KEY_CHANGE_THIS}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-secret}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:5173}
     depends_on:
       - db
 
@@ -32,8 +34,8 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-secret}
       MYSQL_DATABASE: final_project
-    ports:
-      - "3306:3306"
+    # ports:
+    #   - "3306:3306"
     volumes:
       - db_data:/var/lib/mysql
 
