@@ -14,11 +14,149 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from datetime import datetime, timedelta, timezone
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
+from fastapi import Depends, status
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.responses import StreamingResponse
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+import pyotp
+import io
+import qrcode
+from sqlalchemy import create_engine, Column, Integer, String, Boolean
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, Session
 
 # 引入 OAuth 模組
 import Oauth
 
 app = FastAPI()
+
+# --- 資料庫設定 (MariaDB) ---
+# 優先讀取環境變數 (Docker)，否則使用 localhost (本機開發)
+DATABASE_URL = os.getenv("DATABASE_URL", "mysql+pymysql://root:secret@localhost:3306/final_project")
+
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
+
+# --- 資料庫模型 ---
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(50), unique=True, index=True)
+    hashed_password = Column(String(100))
+    secret_2fa = Column(String(32), nullable=True)
+    is_2fa_enabled = Column(Boolean, default=False)
+    
+    # 新增欄位
+    full_name = Column(String(100), nullable=True)
+    email = Column(String(100), nullable=True)
+    openai_api_key = Column(String(200), nullable=True)
+    gemini_api_key = Column(String(200), nullable=True)
+
+# 等待資料庫連線並建立資料表
+def init_db(retries=5, delay=5):
+    for i in range(retries):
+        try:
+            Base.metadata.create_all(bind=engine)
+            print("Database connected and tables created.")
+            return
+        except Exception as e:
+            print(f"Database connection failed (attempt {i+1}/{retries}): {e}")
+            if i < retries - 1:
+                time.sleep(delay)
+            else:
+                print("Could not connect to database after multiple attempts.")
+
+# 在啟動時執行
+init_db()
+
+# Dependency
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+# --- 安全性設定 ---
+# 在生產環境中，請務必透過環境變數設定 SECRET_KEY，不要使用預設值
+SECRET_KEY = os.getenv("SECRET_KEY", "YOUR_SUPER_SECRET_KEY_CHANGE_THIS") 
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+
+# 初始化預設 Admin 帳號
+try:
+    db = SessionLocal()
+    admin_user = db.query(User).filter(User.username == "admin").first()
+    if not admin_user:
+        print("Creating default admin user...")
+        hashed_password = pwd_context.hash("secret")
+        new_user = User(username="admin", hashed_password=hashed_password)
+        db.add(new_user)
+        db.commit()
+        print("Default admin user created: admin / secret")
+    db.close()
+except Exception as e:
+    print(f"Error creating default admin: {e}")
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class Verify2FARequest(BaseModel):
+    username: str
+    code: str
+
+# 新增註冊用的 Model
+class UserCreate(BaseModel):
+    username: str
+    password: str
+    email: Optional[str] = None
+    full_name: Optional[str] = None
+
+class UserUpdate(BaseModel):
+    email: Optional[str] = None
+    full_name: Optional[str] = None
+    openai_api_key: Optional[str] = None
+    gemini_api_key: Optional[str] = None
+
+class PasswordUpdate(BaseModel):
+    old_password: str
+    new_password: str
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.now(timezone.utc) + expires_delta
+    else:
+        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+    
+    user = db.query(User).filter(User.username == username).first()
+    if user is None:
+        raise credentials_exception
+    return user
 
 # Google OAuth 設定存放路徑
 CREDENTIALS_PATH = "credentials.json"
@@ -37,6 +175,119 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# --- 登入與 2FA API ---
+
+@app.post("/api/auth/register", response_model=Token)
+async def register(user_data: UserCreate, db: Session = Depends(get_db)):
+    # 檢查帳號是否已存在
+    db_user = db.query(User).filter(User.username == user_data.username).first()
+    if db_user:
+        raise HTTPException(status_code=400, detail="Username already registered")
+    
+    # 建立新使用者
+    hashed_password = pwd_context.hash(user_data.password)
+    new_user = User(
+        username=user_data.username, 
+        hashed_password=hashed_password,
+        email=user_data.email,
+        full_name=user_data.full_name
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    
+    # 自動登入
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": new_user.username}, expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
+
+@app.post("/api/auth/login", response_model=Token)
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.username == form_data.username).first()
+    if not user or not pwd_context.verify(form_data.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.username}, expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
+
+@app.get("/api/auth/2fa/setup")
+async def setup_2fa(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    secret = pyotp.random_base32()
+    
+    # 更新使用者資料庫
+    current_user.secret_2fa = secret
+    db.commit()
+    
+    uri = pyotp.totp.TOTP(secret).provisioning_uri(
+        name=current_user.username, 
+        issuer_name="MyFinalProject"
+    )
+    
+    img = qrcode.make(uri)
+    buf = io.BytesIO()
+    img.save(buf)
+    buf.seek(0)
+    
+    return StreamingResponse(buf, media_type="image/png")
+
+@app.post("/api/auth/2fa/verify")
+async def verify_2fa(request: Verify2FARequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.username == request.username).first()
+    if not user or not user.secret_2fa:
+        raise HTTPException(status_code=400, detail="2FA not setup for this user")
+
+    totp = pyotp.TOTP(user.secret_2fa)
+    if totp.verify(request.code, valid_window=1):
+        user.is_2fa_enabled = True
+        db.commit()
+        return {"status": "success", "message": "2FA verified and enabled"}
+    else:
+        raise HTTPException(status_code=400, detail="Invalid 2FA code")
+
+@app.get("/api/users/me")
+async def read_users_me(current_user: User = Depends(get_current_user)):
+    return {
+        "username": current_user.username,
+        "full_name": current_user.full_name,
+        "email": current_user.email,
+        "2fa_enabled": current_user.is_2fa_enabled,
+        "has_openai_key": bool(current_user.openai_api_key),
+        "has_gemini_key": bool(current_user.gemini_api_key)
+    }
+
+@app.put("/api/users/me")
+async def update_user_me(user_update: UserUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if user_update.full_name is not None:
+        current_user.full_name = user_update.full_name
+    if user_update.email is not None:
+        current_user.email = user_update.email
+    if user_update.openai_api_key is not None:
+        current_user.openai_api_key = user_update.openai_api_key
+    if user_update.gemini_api_key is not None:
+        current_user.gemini_api_key = user_update.gemini_api_key
+    
+    db.commit()
+    db.refresh(current_user)
+    return {"status": "success", "message": "Profile updated"}
+
+@app.put("/api/users/me/password")
+async def update_password(password_update: PasswordUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not pwd_context.verify(password_update.old_password, current_user.hashed_password):
+        raise HTTPException(status_code=400, detail="Incorrect old password")
+    
+    current_user.hashed_password = pwd_context.hash(password_update.new_password)
+    db.commit()
+    return {"status": "success", "message": "Password updated"}
 
 
 @app.get("/api/weather")
@@ -125,7 +376,6 @@ def is_open(restaurant):
 # API 2: /api/food
 @app.get("/api/food")
 def get_food(locations: List[str] = Query(default=["後門"]), only_open: bool = False):
-    # 1. 篩選地點
     candidates = [r for r in restaurants_db if r["location"] in locations]
     
     # 2. 篩選營業時間
@@ -158,7 +408,7 @@ def sync_tasks(year: Optional[int] = None, month: Optional[int] = None):
     calendar_data = []
     calendar_next_token = None
 
-    # 1. 讀取 Gmail (讀取前 20 封)
+    # 1. 讀取 Gmail 
     if gmail_service:
         try:
             results = gmail_service.users().messages().list(userId='me', maxResults=20).execute()
@@ -173,7 +423,6 @@ def sync_tasks(year: Optional[int] = None, month: Optional[int] = None):
                 sender = next((h['value'] for h in headers if h['name'] == 'From'), '(未知寄件者)')
                 date = next((h['value'] for h in headers if h['name'] == 'Date'), '')
                 
-                # 清理 snippet：移除多餘空白和換行
                 clean_snippet = ' '.join(snippet.split())
                 
                 gmail_data.append({
@@ -187,7 +436,7 @@ def sync_tasks(year: Optional[int] = None, month: Optional[int] = None):
             print(f"Gmail Error: {e}")
             gmail_data.append({"subject": "讀取錯誤", "sender": "System", "snippet": str(e)})
 
-    # 2. 讀取 Calendar (指定月份或當月)
+
     if calendar_service:
         try:
             now = datetime.utcnow()
@@ -208,7 +457,7 @@ def sync_tasks(year: Optional[int] = None, month: Optional[int] = None):
                 calendarId='primary', 
                 timeMin=timeMin,
                 timeMax=timeMax,
-                maxResults=250, # 抓取整個月的事件
+                maxResults=250,
                 singleEvents=True,
                 orderBy='startTime'
             ).execute()
@@ -285,13 +534,19 @@ def load_more_calendar(request: LoadMoreRequest):
 
 class ChatRequest(BaseModel):
     prompt: str
-    api_key: str
+    api_key: Optional[str] = None # 改為 Optional
     model: str
 
 @app.post("/api/chat/openai")
-async def chat_openai(request: ChatRequest):
+async def chat_openai(request: ChatRequest, current_user: User = Depends(get_current_user)):
+    # 優先使用使用者的 API Key
+    api_key = current_user.openai_api_key or request.api_key
+    
+    if not api_key:
+        raise HTTPException(status_code=400, detail="OpenAI API Key is required (set in profile or request)")
+
     try:
-        client = openai.AsyncOpenAI(api_key=request.api_key)
+        client = openai.AsyncOpenAI(api_key=api_key)
         response = await client.chat.completions.create(
             model=request.model,
             messages=[{"role": "user", "content": request.prompt}]
@@ -302,9 +557,15 @@ async def chat_openai(request: ChatRequest):
         return {"error": str(e)}
 
 @app.post("/api/chat/gemini")
-async def chat_gemini(request: ChatRequest):
+async def chat_gemini(request: ChatRequest, current_user: User = Depends(get_current_user)):
+    # 優先使用使用者的 API Key
+    api_key = current_user.gemini_api_key or request.api_key
+    
+    if not api_key:
+        raise HTTPException(status_code=400, detail="Gemini API Key is required (set in profile or request)")
+
     try:
-        client = genai.Client(api_key=request.api_key)
+        client = genai.Client(api_key=api_key)
         response = client.models.generate_content(
             model=request.model,
             contents=request.prompt
@@ -341,7 +602,6 @@ async def google_setup(request: GoogleSetupRequest):
         with open(CREDENTIALS_PATH, "w") as f:
             json.dump(client_config, f)
             
-        # 產生授權連結
         flow = InstalledAppFlow.from_client_secrets_file(
             CREDENTIALS_PATH, 
             scopes=Oauth.SCOPES,
@@ -839,7 +1099,7 @@ async def analyze_with_llm(emails, custom_prompt, api_key, model_type="gemini"):
         except Exception as e:
             print(f"LLM Analysis Error for email {email['id']}: {e}")
         
-        # 每處理完一批（batch_size）郵件後暫停
+        # 每處理完一批郵件後暫停
         if (i + 1) % batch_size == 0 and (i + 1) < len(emails):
             print(f"[DEBUG] 已處理 {i + 1} 封郵件，暫停 {batch_delay} 秒以避免限流...")
             await asyncio.sleep(batch_delay)

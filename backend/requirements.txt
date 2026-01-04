@@ -6,4 +6,12 @@ google-genai
 python-multipart
 google-auth-oauthlib
 google-api-python-client
+python-jose[cryptography]
+passlib[bcrypt]
+bcrypt==4.0.1
+pyotp
+qrcode
+pillow
+sqlalchemy
+pymysql
 

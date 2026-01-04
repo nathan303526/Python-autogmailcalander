@@ -448,7 +448,6 @@ const loadMoreCalendar = async () => {
           :disabled="!isConfigured"
           class="bg-purple-600 hover:bg-purple-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-xl transition duration-300 flex items-center gap-2 shadow-lg"
         >
-          <span>🧠</span>
           智慧分析
         </button>
         <button 
