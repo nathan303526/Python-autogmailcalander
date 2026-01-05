@@ -236,7 +236,7 @@ async def setup_2fa(current_user: User = Depends(get_current_user), db: Session 
     
     uri = pyotp.totp.TOTP(secret).provisioning_uri(
         name=current_user.username, 
-        issuer_name="MyFinalProject"
+        issuer_name="GmailCalander"
     )
     
     img = qrcode.make(uri)

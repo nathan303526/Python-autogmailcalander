@@ -65,12 +65,18 @@ const callApi = async (provider, prompt, key, model) => {
   if (!key) return `請輸入 ${provider} API Key 以取得回應`
   
   try {
+    const token = localStorage.getItem('token')
+    if (!token) return '[錯誤]: 請先登入'
+    
     const endpoint = provider === 'OpenAI' ? '/chat/openai' : '/chat/gemini'
     const res = await axios.post(`${API_BASE}${endpoint}`, {
       prompt: prompt,
       api_key: key,
       model: model
-    }, { timeout: 30000 }) // 設定 30 秒超時
+    }, { 
+      timeout: 30000,
+      headers: { Authorization: `Bearer ${token}` }
+    })
     
     if (res.data.error) {
       return `[API 錯誤]: ${res.data.error}`
